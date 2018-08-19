@@ -1,134 +1,50 @@
-// Creating map object
-var myMap = L.map("map", {
-    center: [40.7128, -74.0059],
-    zoom: 1
-  });
-  
-  // Adding tile layer
-  L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
-    attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
-    maxZoom: 18,
-    id: "mapbox.streets",
-    accessToken: API_KEY
-  }).addTo(myMap);
-  
-  var link = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson";
-  
-  // Grabbing our GeoJSON data..
-  d3.json(link, function(data) {
-    // Creating a GeoJSON layer with the retrieved data
-    // console.log('d',data.properties)
+var timeFmt = d3.timeFormat("%I:%M")
 
-    for (i=0; i<data['features'].length;i++){
-      console.log(data['features'][i]);
-        var marker = L.marker([+data['features'][i].geometry.coordinates[1], +data['features'][i].geometry.coordinates[0]],{
-                draggable: true,
-                title: "My First Marker"
-              }).addTo(myMap);
+// Define arrays to hold created markers and shapes
+var quakeMarkers = [];
+var tectonicshapes = [];
 
-        // Binding a pop-up to our marker
-         marker.bindPopup("Hello There!");
+// Grabbing our GeoJSON data..
+var link = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson";
+d3.json(link, function (data) {
+  for (i = 0; i < data['features'].length; i++) {
+    var quakeMarker = (L.circle([+data['features'][i].geometry.coordinates[1], +data['features'][i].geometry.coordinates[0]],
+      {
+        stroke: true,
+        fillOpacity: 0.75,
+        color: getColor(data['features'][i]['properties']['mag']),
+        fillColor: getColor(data['features'][i]['properties']['mag']),
+        radius: markerSize(data['features'][i]['properties']['mag'])
+      }));
 
-    }
-    //
-  });
+    // //Binding a pop-up
+    quakeMarker.bindPopup("<p><strong>Location: </strong>" + data['features'][i]['properties']['place'] + "<br /><strong>Time occurrence: </strong>" + timeFmt(new Date(data['features'][i]['properties']['time'])) + "</p>")//, );
 
-
-
-  
-
-  // Function to determine marker size based on population
-function markerSize(population) {
-  return population / 40;
-}
-
-// An array containing all of the information needed to create city and state markers
-var locations = [
-  {
-    coordinates: [40.7128, -74.0059],
-    state: {
-      name: "New York State",
-      population: 19795791
-    },
-    city: {
-      name: "New York",
-      population: 8550405
-    }
-  },
-  {
-    coordinates: [34.0522, -118.2437],
-    state: {
-      name: "California",
-      population: 39250017
-    },
-    city: {
-      name: "Lost Angeles",
-      population: 3971883
-    }
-  },
-  {
-    coordinates: [41.8781, -87.6298],
-    state: {
-      name: "Michigan",
-      population: 9928300
-    },
-    city: {
-      name: "Chicago",
-      population: 2720546
-    }
-  },
-  {
-    coordinates: [29.7604, -95.3698],
-    state: {
-      name: "Texas",
-      population: 26960000
-    },
-    city: {
-      name: "Houston",
-      population: 2296224
-    }
-  },
-  {
-    coordinates: [41.2524, -95.9980],
-    state: {
-      name: "Nebraska",
-      population: 1882000
-    },
-    city: {
-      name: "Omaha",
-      population: 446599
-    }
+    quakeMarkers.push(quakeMarker);
   }
-];
+})
+//console.log('quakeMarkers',quakeMarkers)
 
-// Define arrays to hold created city and state markers
-var cityMarkers = [];
-var stateMarkers = [];
 
-// Loop through locations and create city and state markers
-for (var i = 0; i < locations.length; i++) {
-  // Setting the marker radius for the state by passing population into the markerSize function
-  stateMarkers.push(
-    L.circle(locations[i].coordinates, {
-      stroke: false,
-      fillOpacity: 0.75,
-      color: "white",
-      fillColor: "white",
-      radius: markerSize(locations[i].state.population)
-    })
-  );
+// Grabbing tectonic GeoJSON data..
+var tectonic = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json"
+d3.json(tectonic, function (data) {
+  var tectonicshape = (L.geoJson(data, {
+    style: function (feature) {
+      return {
+        color: "white",
+        fillColor: 'black',
+        fillOpacity: 0.5,
+        weight: 1.5
+      };
+    }
+  }))
 
-  // Setting the marker radius for the city by passing population into the markerSize function
-  cityMarkers.push(
-    L.circle(locations[i].coordinates, {
-      stroke: false,
-      fillOpacity: 0.75,
-      color: "purple",
-      fillColor: "purple",
-      radius: markerSize(locations[i].city.population)
-    })
-  );
-}
+  tectonicshapes.push(tectonicshape);
+})
+
+//console.log('tectonicshapes',tectonicshapes)
+
 
 // Define variables for our base layers
 var streetmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
@@ -145,32 +61,76 @@ var darkmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?
   accessToken: API_KEY
 });
 
-// Create two separate layer groups: one for cities and one for states
-var states = L.layerGroup(stateMarkers);
-var cities = L.layerGroup(cityMarkers);
 
-// Create a baseMaps object
+var quakesGroup = L.layerGroup(quakeMarkers);
+var tetonicGroup = L.layerGroup(tectonicshapes);
+
+//console.log('??',quakesGroup,tetonicGroup )
+
+var myMap = L.map("map", {
+  center: [41.8781, -87.6298],
+  zoom: 3,
+  layers: [streetmap, quakesGroup]//, states,\ cities]
+})
+
+// // Create a baseMaps object
 var baseMaps = {
   "Street Map": streetmap,
   "Dark Map": darkmap
 };
 
-// Create an overlay object
+// // Create an overlay object
 var overlayMaps = {
-  "State Population": states,
-  "City Population": cities
+  "Quakes": quakesGroup,
+  "Tetonic Lines": tetonicGroup
 };
 
+console.log('overlayMaps??', overlayMaps)
+
 // Define a map object
-var myMap = L.map("map", {
-  center: [37.09, -95.71],
-  zoom: 5,
-  layers: [streetmap, states, cities]
-});
 
 // Pass our map layers into our layer control
 // Add the layer control to the map
 L.control.layers(baseMaps, overlayMaps, {
   collapsed: false
 }).addTo(myMap);
-  
+
+// Setting up the legend
+var legend = L.control({ position: "bottomright" });
+legend.onAdd = function () {
+  var div = L.DomUtil.create("div", "info legend");
+  var limits = [1, 2, 3, 4, 5];
+  var colors = ['green', 'lime', 'yellow', 'orange', 'red'];
+  var labels = [];
+
+  var legendInfo = "<h5>Magnitude:</h5>"
+
+  div.innerHTML = legendInfo;
+  for (var i = 0; i < limits.length; i++) {
+    div.innerHTML +=
+      '<i style="background:' + getColor(limits[i] + 1) + '"></i> ' +
+      limits[i] + (limits[i + 1] ? '&ndash;' + limits[i + 1] + '<br>' : '+');
+  }
+
+  return div;
+};
+
+// Adding legend to the map
+legend.addTo(myMap);
+
+
+function markerSize(mag) {
+  return mag * 10000 * 2;
+}
+
+function getColor(d) {
+  return d > 5 ? '#800026' :
+    d > 4 ? '#BD0026' :
+      d > 3 ? '#E31A1C' :
+        d > 2 ? '#FC4E2A' :
+          d > 1 ? '#FD8D3C' :
+            d > 0 ? '#FEB24C' :
+              //d > 10   ? '#FED976' :
+              '#FFEDA0';
+}
+
