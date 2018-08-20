@@ -1,35 +1,36 @@
 var timeFmt = d3.timeFormat("%I:%M")
 
-// Define arrays to hold created markers and shapes
-var quakeMarkers = [];
-var tectonicshapes = [];
+var quakeMarkers = L.layerGroup();
+var tectonicshapes = L.layerGroup();
 
 // Grabbing our GeoJSON data..
 var link = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson";
 d3.json(link, function (data) {
   for (i = 0; i < data['features'].length; i++) {
-    var quakeMarker = (L.circle([+data['features'][i].geometry.coordinates[1], +data['features'][i].geometry.coordinates[0]],
+
+    var quakeMarker = L.circle([+data['features'][i].geometry.coordinates[1], +data['features'][i].geometry.coordinates[0]],
       {
         stroke: true,
         fillOpacity: 0.75,
         color: getColor(data['features'][i]['properties']['mag']),
         fillColor: getColor(data['features'][i]['properties']['mag']),
         radius: markerSize(data['features'][i]['properties']['mag'])
-      }));
+      })
 
-    // //Binding a pop-up
+    //Binding a pop-up
     quakeMarker.bindPopup("<p><strong>Location: </strong>" + data['features'][i]['properties']['place'] + "<br /><strong>Time occurrence: </strong>" + timeFmt(new Date(data['features'][i]['properties']['time'])) + "</p>")//, );
 
-    quakeMarkers.push(quakeMarker);
+    quakeMarker.addTo(quakeMarkers);
   }
 })
-//console.log('quakeMarkers',quakeMarkers)
+console.log('quakeMarkers', quakeMarkers)
 
 
 // Grabbing tectonic GeoJSON data..
 var tectonic = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json"
-d3.json(tectonic, function (data) {
-  var tectonicshape = (L.geoJson(data, {
+d3.json(tectonic, data => {
+
+  var tectonicshape = L.geoJson(data, {
     style: function (feature) {
       return {
         color: "white",
@@ -38,13 +39,10 @@ d3.json(tectonic, function (data) {
         weight: 1.5
       };
     }
-  }))
+  })
 
-  tectonicshapes.push(tectonicshape);
+  tectonicshape.addTo(tectonicshapes);
 })
-
-//console.log('tectonicshapes',tectonicshapes)
-
 
 // Define variables for our base layers
 var streetmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
@@ -62,38 +60,27 @@ var darkmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?
 });
 
 
-var quakesGroup = L.layerGroup(quakeMarkers);
-var tetonicGroup = L.layerGroup(tectonicshapes);
-
-//console.log('??',quakesGroup,tetonicGroup )
-
 var myMap = L.map("map", {
   center: [41.8781, -87.6298],
   zoom: 3,
-  layers: [streetmap, quakesGroup]//, states,\ cities]
+  layers: [streetmap, quakeMarkers]
 })
 
-// // Create a baseMaps object
+// Create a baseMaps object
 var baseMaps = {
   "Street Map": streetmap,
   "Dark Map": darkmap
 };
 
-// // Create an overlay object
+// Create an overlay object
 var overlayMaps = {
-  "Quakes": quakesGroup,
-  "Tetonic Lines": tetonicGroup
+  "Quakes": quakeMarkers,
+  "Tectonic Lines": tectonicshapes
 };
-
-console.log('overlayMaps??', overlayMaps)
-
-// Define a map object
 
 // Pass our map layers into our layer control
 // Add the layer control to the map
-L.control.layers(baseMaps, overlayMaps, {
-  collapsed: false
-}).addTo(myMap);
+L.control.layers(baseMaps, overlayMaps).addTo(myMap);
 
 // Setting up the legend
 var legend = L.control({ position: "bottomright" });
@@ -130,7 +117,5 @@ function getColor(d) {
         d > 2 ? '#FC4E2A' :
           d > 1 ? '#FD8D3C' :
             d > 0 ? '#FEB24C' :
-              //d > 10   ? '#FED976' :
               '#FFEDA0';
 }
-
