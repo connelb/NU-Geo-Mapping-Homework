@@ -4,7 +4,8 @@ var quakeMarkers = L.layerGroup();
 var tectonicshapes = L.layerGroup();
 
 // Grabbing our GeoJSON data..
-var link = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson";
+//var link = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson";
+var link = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 d3.json(link, function (data) {
   for (i = 0; i < data['features'].length; i++) {
 
@@ -107,7 +108,7 @@ legend.addTo(myMap);
 
 
 function markerSize(mag) {
-  return mag * 10000 * 2;
+  return mag * 10000;
 }
 
 function getColor(d) {
